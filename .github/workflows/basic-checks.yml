@@ -1,0 +1,34 @@
+name: Basic checks
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  html-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Check required project files
+        run: |
+          test -s index.html
+          test -s README.md
+          test -s LICENSE
+      - name: Check basic HTML structure
+        run: |
+          grep -qi '<!doctype html>' index.html
+          grep -qi '<html' index.html
+          grep -qi '</html>' index.html
+      - name: Check embedded JavaScript syntax
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          html = Path("index.html").read_text(encoding="utf-8")
+          scripts = re.findall(r"<script>(.*?)</script>", html, flags=re.S | re.I)
+          if not scripts:
+              raise SystemExit("No inline script block found")
+          Path("/tmp/app.js").write_text("\n".join(scripts), encoding="utf-8")
+          PY
+          node --check /tmp/app.js
